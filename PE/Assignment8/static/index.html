@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Content Creation & Analysis System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  <!-- Feather / Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-content">
+        <div class="header-brand">
+          <i data-lucide="cpu" class="brand-icon"></i>
+          <div>
+            <h1 class="brand-title">AI Content Creation & Analysis System</h1>
+            <p class="brand-subtitle">Structured Prompt Engineering, NLP Text Analysis, and Parameter Evaluation</p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button id="toggle-settings-btn" class="btn btn-secondary">
+            <i data-lucide="settings"></i>
+            <span>Settings</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Settings Bar (Collapsible) -->
+    <div id="settings-panel" class="settings-panel">
+      <div class="settings-grid">
+        <div class="form-group">
+          <label for="provider-select">LLM Provider</label>
+          <select id="provider-select" class="form-control">
+            <option value="auto">Auto-Detect</option>
+            <option value="gemini">Google Gemini</option>
+            <option value="openai">OpenAI</option>
+            <option value="mock">Offline Engine</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="api-key-input">API Key (Optional)</label>
+          <input type="password" id="api-key-input" class="form-control" placeholder="Enter API Key...">
+        </div>
+        <div class="form-group">
+          <label for="global-temp">Default Temperature: <span id="temp-val">0.7</span></label>
+          <input type="range" id="global-temp" min="0.0" max="1.5" step="0.05" value="0.7" class="slider">
+        </div>
+        <div class="form-group">
+          <label for="global-top-p">Default Top-P: <span id="top-p-val">0.95</span></label>
+          <input type="range" id="global-top-p" min="0.1" max="1.0" step="0.05" value="0.95" class="slider">
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Navigation Tabs -->
+    <nav class="nav-tabs-container">
+      <div class="nav-tabs">
+        <button class="tab-btn active" data-tab="tab-prompts">
+          <i data-lucide="file-code"></i>
+          <span>1. Prompt Design</span>
+        </button>
+        <button class="tab-btn" data-tab="tab-content">
+          <i data-lucide="pen-tool"></i>
+          <span>2. Content Generation</span>
+        </button>
+        <button class="tab-btn" data-tab="tab-podcast">
+          <i data-lucide="mic"></i>
+          <span>3. Podcast Planning</span>
+        </button>
+        <button class="tab-btn" data-tab="tab-analysis">
+          <i data-lucide="bar-chart-2"></i>
+          <span>4. Text Analysis</span>
+        </button>
+        <button class="tab-btn" data-tab="tab-experiment">
+          <i data-lucide="sliders"></i>
+          <span>5. Parameter Experimentation</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Main Content Container -->
+    <main class="main-container">
+      <!-- TAB 1: PROMPT DESIGN -->
+      <section id="tab-prompts" class="tab-content active">
+        <div class="section-header">
+          <h2>Prompt Design Architecture</h2>
+          <p>Inspect structured system prompts built with Role, Context, Constraints, and Output Format specifications.</p>
+        </div>
+
+        <div class="grid-2col">
+          <div class="card">
+            <div class="form-group">
+              <label for="prompt-template-select">Select System Prompt Template</label>
+              <select id="prompt-template-select" class="form-control">
+                <option value="story">Story Generation</option>
+                <option value="poem">Poem Generation</option>
+                <option value="social">Social Media Campaign</option>
+                <option value="podcast">Podcast Planning</option>
+                <option value="analysis">Text Analysis (JSON Schema)</option>
+              </select>
+            </div>
+
+            <div class="pillars-list">
+              <div class="pillar-item">
+                <div class="pillar-title"><i data-lucide="user"></i> Role</div>
+                <div id="pillar-role" class="pillar-desc">Loading...</div>
+              </div>
+              <div class="pillar-item">
+                <div class="pillar-title"><i data-lucide="globe"></i> Context</div>
+                <div id="pillar-context" class="pillar-desc">Loading...</div>
+              </div>
+              <div class="pillar-item">
+                <div class="pillar-title"><i data-lucide="shield"></i> Constraints</div>
+                <div id="pillar-constraints" class="pillar-desc pre-wrap">Loading...</div>
+              </div>
+              <div class="pillar-item">
+                <div class="pillar-title"><i data-lucide="layout"></i> Output Format</div>
+                <div id="pillar-format" class="pillar-desc pre-wrap">Loading...</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h3>Compiled Prompt Preview</h3>
+              <button class="btn btn-sm btn-secondary copy-btn" data-target="compiled-prompt-code">
+                <i data-lucide="copy"></i> Copy
+              </button>
+            </div>
+            <pre class="code-block"><code id="compiled-prompt-code">Loading compiled prompt...</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: CONTENT GENERATION -->
+      <section id="tab-content" class="tab-content">
+        <div class="section-header">
+          <h2>Content Generation</h2>
+          <p>Generate stories, poems, or platform-tailored social media posts using structured prompt design.</p>
+        </div>
+
+        <div class="card mb-4">
+          <div class="form-grid-3">
+            <div class="form-group form-span-2">
+              <label for="content-topic-input">Topic</label>
+              <input type="text" id="content-topic-input" class="form-control" value="Future of Space Exploration and Mars Colonization">
+            </div>
+            <div class="form-group">
+              <label for="content-type-select">Content Format</label>
+              <select id="content-type-select" class="form-control">
+                <option value="story">Short Story</option>
+                <option value="poem">Poem</option>
+                <option value="social">Social Media Posts (X, LinkedIn, Instagram)</option>
+              </select>
+            </div>
+          </div>
+          <button id="generate-content-btn" class="btn btn-primary">
+            <i data-lucide="play"></i> Generate Content
+          </button>
+        </div>
+
+        <div id="content-result-card" class="card hidden">
+          <div class="card-header">
+            <h3>Generated Output</h3>
+            <div class="meta-badge" id="content-meta-badge">Meta</div>
+          </div>
+          <div id="content-output-text" class="output-text pre-wrap"></div>
+        </div>
+      </section>
+
+      <!-- TAB 3: PODCAST PLANNING -->
+      <section id="tab-podcast" class="tab-content">
+        <div class="section-header">
+          <h2>Podcast Planning</h2>
+          <p>Formulate an episode title, show notes description, ideal guest profile, and 5 structured interview questions.</p>
+        </div>
+
+        <div class="card mb-4">
+          <div class="form-group">
+            <label for="podcast-topic-input">Podcast Topic</label>
+            <input type="text" id="podcast-topic-input" class="form-control" value="Ethical AI and Prompt Engineering in Software Systems">
+          </div>
+          <button id="generate-podcast-btn" class="btn btn-primary">
+            <i data-lucide="mic"></i> Generate Podcast Blueprint
+          </button>
+        </div>
+
+        <div id="podcast-result-card" class="card hidden">
+          <div class="card-header">
+            <h3>Episode Plan</h3>
+            <div class="meta-badge" id="podcast-meta-badge">Meta</div>
+          </div>
+          <div id="podcast-output-text" class="output-text pre-wrap"></div>
+        </div>
+      </section>
+
+      <!-- TAB 4: TEXT ANALYSIS -->
+      <section id="tab-analysis" class="tab-content">
+        <div class="section-header">
+          <h2>Text Analysis</h2>
+          <p>Extract emotional sentiment scores (-1.0 to +1.0) and domain keyword relevance distributions.</p>
+        </div>
+
+        <div class="card mb-4">
+          <div class="form-group">
+            <label for="analysis-text-input">Input Text</label>
+            <textarea id="analysis-text-input" class="form-control textarea" rows="4">Prompt engineering has completely transformed how developers build software with artificial intelligence. Although mastering structured prompt design requires careful context formulation, the immediate gains in developer productivity, output quality, and user satisfaction make it an invaluable skill.</textarea>
+          </div>
+          <button id="analyze-text-btn" class="btn btn-primary">
+            <i data-lucide="search"></i> Analyze Text
+          </button>
+        </div>
+
+        <div id="analysis-result-card" class="hidden">
+          <div class="metrics-grid mb-4">
+            <div class="metric-card">
+              <div class="metric-label">Sentiment Label</div>
+              <div id="sentiment-label-val" class="metric-value">-</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Sentiment Score</div>
+              <div id="sentiment-score-val" class="metric-value">-</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-label">Keywords Identified</div>
+              <div id="keywords-count-val" class="metric-value">-</div>
+            </div>
+          </div>
+
+          <div class="card mb-4">
+            <h4>Rationale</h4>
+            <p id="sentiment-explanation-text" class="text-subtle"></p>
+          </div>
+
+          <div class="card">
+            <h4>Keyword Relevance Distribution</h4>
+            <div id="keywords-chart-container" class="chart-container"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: PARAMETER EXPERIMENTATION -->
+      <section id="tab-experiment" class="tab-content">
+        <div class="section-header">
+          <h2>Parameter Experimentation</h2>
+          <p>Evaluate how altering Temperature ($T$) and Top-P ($P$) impacts model output determinism versus creative randomness.</p>
+        </div>
+
+        <div class="card mb-4">
+          <div class="form-group">
+            <label for="exp-prompt-input">Test Prompt</label>
+            <input type="text" id="exp-prompt-input" class="form-control" value="Describe Artificial Intelligence in 3 sentences.">
+          </div>
+          <button id="run-exp-btn" class="btn btn-primary">
+            <i data-lucide="sliders"></i> Run Parameter Comparison
+          </button>
+        </div>
+
+        <div class="grid-3col">
+          <div class="card">
+            <div class="profile-header">
+              <span class="badge badge-subtle">Profile 1</span>
+              <h4>Low Temperature</h4>
+            </div>
+            <p class="text-subtle mb-3">T: 0.1 | Top-P: 0.5 (Deterministic)</p>
+            <div id="exp-res-1" class="output-text pre-wrap text-sm min-h-120">Run comparison to view response.</div>
+          </div>
+
+          <div class="card">
+            <div class="profile-header">
+              <span class="badge badge-subtle">Profile 2</span>
+              <h4>Medium Temperature</h4>
+            </div>
+            <p class="text-subtle mb-3">T: 0.7 | Top-P: 0.9 (Balanced)</p>
+            <div id="exp-res-2" class="output-text pre-wrap text-sm min-h-120">Run comparison to view response.</div>
+          </div>
+
+          <div class="card">
+            <div class="profile-header">
+              <span class="badge badge-subtle">Profile 3</span>
+              <h4>High Temperature</h4>
+            </div>
+            <p class="text-subtle mb-3">T: 1.2 | Top-P: 0.98 (Creative)</p>
+            <div id="exp-res-3" class="output-text pre-wrap text-sm min-h-120">Run comparison to view response.</div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
