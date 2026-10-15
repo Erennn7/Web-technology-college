@@ -18,6 +18,24 @@ document.addEventListener("DOMContentLoaded", () => {
   const topPVal = document.getElementById("top-p-val");
   topPSlider.addEventListener("input", (e) => topPVal.textContent = e.target.value);
 
+  // Persistent Settings in LocalStorage
+  const apiKeyInput = document.getElementById("api-key-input");
+  const providerSelect = document.getElementById("provider-select");
+
+  const savedKey = localStorage.getItem("app_api_key");
+  if (savedKey) apiKeyInput.value = savedKey;
+
+  const savedProvider = localStorage.getItem("app_provider");
+  if (savedProvider) providerSelect.value = savedProvider;
+
+  apiKeyInput.addEventListener("input", (e) => {
+    localStorage.setItem("app_api_key", e.target.value.trim());
+  });
+
+  providerSelect.addEventListener("change", (e) => {
+    localStorage.setItem("app_provider", e.target.value);
+  });
+
   // Tab Navigation
   const tabBtns = document.querySelectorAll(".tab-btn");
   const tabContents = document.querySelectorAll(".tab-content");

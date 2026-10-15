@@ -35,12 +35,17 @@ except ImportError:
 class LLMHandler:
     def __init__(self, provider: str = "auto", api_key: Optional[str] = None):
         self.raw_provider = provider.lower()
-        self.api_key = (api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("OPENAI_API_KEY") or "").strip()
+        raw_key = (api_key or os.environ.get("GROQ_API_KEY") or os.environ.get("GEMINI_API_KEY") or os.environ.get("OPENAI_API_KEY") or "").strip()
+        self.api_key = raw_key.strip('"').strip("'").strip()
         
-        # Auto-detect provider if API key is present
+        # Auto-detect provider if auto requested or based on API key signature
         if self.raw_provider == "auto":
             if self.api_key:
-                if self.api_key.startswith("sk-"):
+                if self.api_key.startswith("gsk_"):
+                    self.provider = "groq"
+                elif self.api_key.startswith("AIza"):
+                    self.provider = "gemini"
+                elif self.api_key.startswith("sk-"):
                     self.provider = "openai"
                 else:
                     self.provider = "gemini"
@@ -63,7 +68,7 @@ class LLMHandler:
             res_text = self._mock_generation(prompt, temperature, top_p)
             elapsed = round(time.time() - start_time, 3)
             return res_text, {
-                "provider": "Offline Engine (No API Key)",
+                "provider": "Offline Engine (No API Key set)",
                 "model": "rule-engine-v1",
                 "temperature": temperature,
                 "top_p": top_p,
@@ -71,16 +76,85 @@ class LLMHandler:
                 "status": "Success"
             }
 
+        # Handle Groq Provider (Llama 3)
+        if self.provider == "groq" or self.api_key.startswith("gsk_"):
+            # Try OpenAI SDK first (official Groq recommendation)
+            if HAS_OPENAI:
+                try:
+                    client = openai.OpenAI(base_url="https://api.groq.com/openai/v1", api_key=self.api_key)
+                    
+                    # Dynamically get models available to this API key
+                    target_model = model_name
+                    if not target_model:
+                        try:
+                            models_data = client.models.list()
+                            available = [m.id for m in models_data.data if "whisper" not in m.id and "guard" not in m.id]
+                            # Prioritize popular models if available
+                            for pref in ["llama3-8b-8192", "llama3-70b-8192", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]:
+                                if pref in available:
+                                    target_model = pref
+                                    break
+                            if not target_model and available:
+                                target_model = available[0]
+                        except Exception as list_err:
+                            print(f"[LLMHandler] Could not list models: {list_err}")
+
+                    selected_model = target_model or "llama3-8b-8192"
+                    
+                    res = client.chat.completions.create(
+                        model=selected_model,
+                        messages=[{"role": "user", "content": prompt}],
+                        temperature=float(temperature)
+                    )
+                    elapsed = round(time.time() - start_time, 3)
+                    content = res.choices[0].message.content or ""
+                    return content, {
+                        "provider": "Groq Cloud API",
+                        "model": selected_model,
+                        "temperature": temperature,
+                        "top_p": top_p,
+                        "latency_seconds": elapsed,
+                        "status": "Success"
+                    }
+                except Exception as sdk_err:
+                    print(f"[LLMHandler] Groq SDK error: {sdk_err}. Trying direct REST fallback...")
+
+            # Direct REST fallback
+            try:
+                res_text, model_used = self._call_groq_rest(prompt, self.api_key, temperature, top_p, model_name)
+                elapsed = round(time.time() - start_time, 3)
+                return res_text, {
+                    "provider": "Groq Cloud API",
+                    "model": model_used,
+                    "temperature": temperature,
+                    "top_p": top_p,
+                    "latency_seconds": elapsed,
+                    "status": "Success"
+                }
+            except Exception as groq_err:
+                error_msg = str(groq_err)
+                print(f"[LLMHandler] Groq API call error: {groq_err}")
+                res_text = self._mock_generation(prompt, temperature, top_p)
+                elapsed = round(time.time() - start_time, 3)
+                return res_text, {
+                    "provider": f"Offline Fallback ({error_msg})",
+                    "model": "mock-fallback",
+                    "temperature": temperature,
+                    "top_p": top_p,
+                    "latency_seconds": elapsed,
+                    "status": error_msg
+                }
+
         # Handle Gemini Provider
         if self.provider == "gemini":
-            # Try SDK first if available
+            # Try google-genai SDK first if installed
             if HAS_GENAI:
                 try:
                     client = genai.Client(api_key=self.api_key)
-                    selected_model = model_name or "gemini-2.0-flash"
+                    selected_model = model_name or "gemini-1.5-flash"
                     config = types.GenerateContentConfig(
-                        temperature=float(temperature),
-                        top_p=float(top_p)
+                        temperature=float(min(max(temperature, 0.0), 1.0)),
+                        top_p=float(min(max(top_p, 0.1), 1.0))
                     )
                     res = client.models.generate_content(
                         model=selected_model,
@@ -97,9 +171,9 @@ class LLMHandler:
                         "status": "Success"
                     }
                 except Exception as sdk_err:
-                    print(f"[LLMHandler] SDK error: {sdk_err}. Trying direct REST API fallback...")
+                    print(f"[LLMHandler] Gemini SDK error: {sdk_err}. Trying REST fallback...")
 
-            # Direct HTTP REST API call (Works everywhere without extra packages)
+            # Direct HTTP REST API call with clean fallback
             try:
                 res_text, model_used = self._call_gemini_rest(prompt, self.api_key, temperature, top_p, model_name)
                 elapsed = round(time.time() - start_time, 3)
@@ -112,12 +186,12 @@ class LLMHandler:
                     "status": "Success"
                 }
             except Exception as rest_err:
-                error_msg = f"Gemini API Error: {str(rest_err)}"
-                print(f"[LLMHandler] REST API error: {rest_err}")
+                error_msg = str(rest_err)
+                print(f"[LLMHandler] Gemini API call error: {rest_err}")
                 res_text = self._mock_generation(prompt, temperature, top_p)
                 elapsed = round(time.time() - start_time, 3)
                 return res_text, {
-                    "provider": f"Offline Fallback ({error_msg[:60]}...)",
+                    "provider": f"Offline Fallback ({error_msg})",
                     "model": "mock-fallback",
                     "temperature": temperature,
                     "top_p": top_p,
@@ -148,7 +222,7 @@ class LLMHandler:
                         "status": "Success"
                     }
                 except Exception as oai_err:
-                    error_msg = f"OpenAI API Error: {str(oai_err)}"
+                    error_msg = f"OpenAI Error: {str(oai_err)}"
                     res_text = self._mock_generation(prompt, temperature, top_p)
                     elapsed = round(time.time() - start_time, 3)
                     return res_text, {
@@ -172,11 +246,67 @@ class LLMHandler:
             "status": "Success"
         }
 
+    def _call_groq_rest(
+        self, prompt: str, api_key: str, temperature: float, top_p: float, model_name: Optional[str]
+    ) -> Tuple[str, str]:
+        """Direct zero-dependency Groq REST API caller."""
+        models_to_try = [model_name] if model_name else [
+            "llama3-8b-8192",
+            "llama-3.1-8b-instant",
+            "llama3-70b-8192",
+            "mixtral-8x7b-32768",
+            "llama-3.3-70b-versatile",
+            "gemma2-9b-it"
+        ]
+        url = "https://api.groq.com/openai/v1/chat/completions"
+
+        last_error = None
+        for model in models_to_try:
+            payload = {
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": float(temperature)
+            }
+            req_data = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(
+                url,
+                data=req_data,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {api_key}",
+                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                },
+                method="POST"
+            )
+
+            try:
+                with urllib.request.urlopen(req, timeout=30) as response:
+                    res_body = json.loads(response.read().decode("utf-8"))
+                    text = res_body["choices"][0]["message"]["content"]
+                    return text, model
+            except urllib.error.HTTPError as e:
+                try:
+                    err_body = json.loads(e.read().decode("utf-8"))
+                    msg = err_body.get("error", {}).get("message", f"HTTP {e.code}")
+                    last_error = f"Groq Error: {msg}"
+                except Exception:
+                    last_error = f"Groq HTTP {e.code}"
+            except Exception as e:
+                last_error = str(e)
+
+        raise RuntimeError(last_error or "Groq API Call Failed")
+
     def _call_gemini_rest(
         self, prompt: str, api_key: str, temperature: float, top_p: float, model_name: Optional[str]
     ) -> Tuple[str, str]:
         """Direct zero-dependency Google Gemini REST API caller."""
-        models_to_try = [model_name] if model_name else ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
+        models_to_try = [model_name] if model_name else [
+            "gemini-1.5-flash",
+            "gemini-1.5-flash-latest",
+            "gemini-1.5-pro",
+            "gemini-2.0-flash",
+            "gemini-pro"
+        ]
         
         last_error = None
         for model in models_to_try:
@@ -188,8 +318,8 @@ class LLMHandler:
                     }
                 ],
                 "generationConfig": {
-                    "temperature": float(temperature),
-                    "topP": float(top_p)
+                    "temperature": float(min(max(temperature, 0.0), 1.0)),
+                    "topP": float(min(max(top_p, 0.1), 1.0))
                 }
             }
 
@@ -197,7 +327,11 @@ class LLMHandler:
             req = urllib.request.Request(
                 url,
                 data=req_data,
-                headers={"Content-Type": "application/json"},
+                headers={
+                    "Content-Type": "application/json",
+                    "x-goog-api-key": api_key,
+                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                },
                 method="POST"
             )
 
@@ -207,10 +341,25 @@ class LLMHandler:
                     text = res_body["candidates"][0]["content"]["parts"][0]["text"]
                     return text, model
             except urllib.error.HTTPError as e:
-                err_resp = e.read().decode("utf-8") if e.fp else str(e)
-                last_error = f"HTTP {e.code}: {err_resp}"
+                try:
+                    err_body = json.loads(e.read().decode("utf-8"))
+                    reason = ""
+                    details = err_body.get("error", {}).get("details", [])
+                    if details and isinstance(details, list) and len(details) > 0:
+                        reason = details[0].get("reason", "")
+                    msg = err_body.get("error", {}).get("message", "")
+                    if reason == "API_KEY_INVALID" or "API key not valid" in msg:
+                        last_error = "Gemini Error: Invalid API Key. (Get key from aistudio.google.com/apikey)"
+                    elif "has not been used" in msg or "is disabled" in msg:
+                        last_error = "Gemini Error: Generative Language API not enabled. (Enable at console.cloud.google.com)"
+                    else:
+                        last_error = f"Gemini Error ({e.code}): {msg[:100] or reason}"
+                except Exception:
+                    last_error = f"Gemini HTTP {e.code}"
             except Exception as e:
                 last_error = str(e)
+
+        raise RuntimeError(last_error or "Gemini REST API Call Failed")
 
         raise RuntimeError(last_error or "Gemini REST API Call Failed")
 
