@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HealthAware AI — Health Awareness Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="chat-app">
+    <!-- Clean Header -->
+    <header class="chat-header">
+      <div class="header-brand">
+        <div class="brand-avatar">🏥</div>
+        <div class="brand-info">
+          <h1>HealthAware AI</h1>
+          <p>Health & Wellness Awareness Assistant</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <div class="mode-switch-group">
+          <button class="btn-mode active" id="btnModeInitial" onclick="setMode('initial')">Initial (Can Break)</button>
+          <!-- <button class="btn-mode" id="btnModeHardened" onclick="setMode('hardened')">Hardened (Guarded)</button> -->
+        </div>
+        <button class="btn-api-key" id="btnApiKey" onclick="openKeyModal()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6"/><path d="m15.5 7.5 3 3L22 7l-3-3"/></svg>
+          <span id="apiKeyStatusText">API Key</span>
+        </button>
+        <button class="btn-clear" onclick="clearChat()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+          Clear Chat
+        </button>
+      </div>
+    </header>
+
+    <!-- Chat Messages Window -->
+    <main class="chat-main" id="chatContainer">
+      <div class="chat-messages" id="chatMessages">
+        <!-- Default Welcome Assistant Message -->
+        <div class="message-row assistant">
+          <div class="message-avatar">🤖</div>
+          <div class="message-body">
+            <div class="message-bubble">
+              <p>Hello! I am <strong>HealthAware AI</strong>, your health and wellness awareness assistant.</p>
+              <p>I can help answer questions about healthy lifestyle habits, sleep hygiene, nutrition, everyday self-care comfort measures, and recognizing when to consult a healthcare professional.</p>
+              <p>How can I assist you with your health and wellbeing today?</p>
+            </div>
+            <!-- Quick Suggestion Chips -->
+            <div class="quick-chips">
+              <button class="chip" onclick="sendQuickPrompt('What are evidence-based habits to improve sleep quality?')">Habits for better sleep</button>
+              <button class="chip" onclick="sendQuickPrompt('What home comfort measures can I take for a common cold?')">Care for a common cold</button>
+              <button class="chip" onclick="sendQuickPrompt('What are effective ways to manage exam stress?')">Managing exam stress</button>
+              <button class="chip" onclick="sendQuickPrompt('What does a balanced daily diet look like?')">Balanced daily nutrition</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom Chat Input Bar -->
+    <footer class="chat-footer">
+      <form class="chat-input-wrapper" id="chatForm" onsubmit="handleFormSubmit(event)">
+        <textarea
+          id="userInput"
+          rows="1"
+          placeholder="Ask a health or wellness question..."
+          onkeydown="handleKeydown(event)"
+        ></textarea>
+        <button type="submit" class="btn-send" id="btnSend" aria-label="Send message">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+        </button>
+      </form>
+      <div class="disclaimer-text">
+        HealthAware AI provides general educational awareness only and does not provide clinical diagnosis or medical prescriptions.
+      </div>
+    </footer>
+  </div>
+
+  <!-- Minimal API Key Modal -->
+  <div class="modal-overlay" id="keyModal" onclick="closeModalOnBackdrop(event)">
+    <div class="modal-window">
+      <div class="modal-header">
+        <h3>LLM API Key Settings</h3>
+        <button class="modal-close" onclick="closeKeyModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">
+          Paste your <strong>Groq</strong> (<code>gsk_...</code>), <strong>Google Gemini</strong> (<code>AIza...</code>), or <strong>OpenAI</strong> (<code>sk-...</code>) API key below to enable live responses.
+        </p>
+        <div class="form-group">
+          <label for="txtApiKey">API Key:</label>
+          <input type="password" id="txtApiKey" placeholder="Enter API key..." class="form-input" autocomplete="off">
+        </div>
+        <div class="key-status-indicator" id="keyStatusIndicator"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-modal-clear" onclick="clearApiKey()">Remove Key</button>
+        <button class="btn-modal-save" onclick="saveApiKey()">Save Key</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
