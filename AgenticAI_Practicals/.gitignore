@@ -1,0 +1,22 @@
+# Virtual environment
+venv
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Local media / test downloads
+*.jpg
+*.jpeg
+*.png
+*.mp4
+
+# Vector DB / Local model storage
+*.faiss
+*.index
+.cache/
+
+# OS metadata
+.DS_Store

@@ -32,10 +32,13 @@ except ImportError:
     HAS_OPENAI = False
 
 
+DEFAULT_GROQ_KEY = os.environ.get("GROQ_API_KEY", "")
+
+
 class LLMHandler:
     def __init__(self, provider: str = "auto", api_key: Optional[str] = None):
         self.raw_provider = provider.lower()
-        raw_key = (api_key or os.environ.get("GROQ_API_KEY") or os.environ.get("GEMINI_API_KEY") or os.environ.get("OPENAI_API_KEY") or "").strip()
+        raw_key = (api_key or os.environ.get("GROQ_API_KEY") or os.environ.get("GEMINI_API_KEY") or os.environ.get("OPENAI_API_KEY") or DEFAULT_GROQ_KEY).strip()
         self.api_key = raw_key.strip('"').strip("'").strip()
         
         # Auto-detect provider if auto requested or based on API key signature
@@ -48,7 +51,7 @@ class LLMHandler:
                 elif self.api_key.startswith("sk-"):
                     self.provider = "openai"
                 else:
-                    self.provider = "gemini"
+                    self.provider = "groq" if DEFAULT_GROQ_KEY else "gemini"
             else:
                 self.provider = "mock"
         else:
@@ -76,7 +79,7 @@ class LLMHandler:
                 "status": "Success"
             }
 
-        # Handle Groq Provider (Llama 3)
+        # Handle Groq Provider (Llama / OSS Models)
         if self.provider == "groq" or self.api_key.startswith("gsk_"):
             # Try OpenAI SDK first (official Groq recommendation)
             if HAS_OPENAI:
@@ -89,8 +92,7 @@ class LLMHandler:
                         try:
                             models_data = client.models.list()
                             available = [m.id for m in models_data.data if "whisper" not in m.id and "guard" not in m.id]
-                            # Prioritize popular models if available
-                            for pref in ["llama3-8b-8192", "llama3-70b-8192", "llama-3.1-8b-instant", "mixtral-8x7b-32768"]:
+                            for pref in ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b", "allam-2-7b", "llama-3.3-70b-versatile", "llama-3.1-8b-instant"]:
                                 if pref in available:
                                     target_model = pref
                                     break
@@ -99,12 +101,13 @@ class LLMHandler:
                         except Exception as list_err:
                             print(f"[LLMHandler] Could not list models: {list_err}")
 
-                    selected_model = target_model or "llama3-8b-8192"
+                    selected_model = target_model or "openai/gpt-oss-120b"
                     
                     res = client.chat.completions.create(
                         model=selected_model,
                         messages=[{"role": "user", "content": prompt}],
-                        temperature=float(temperature)
+                        temperature=float(temperature),
+                        max_tokens=800
                     )
                     elapsed = round(time.time() - start_time, 3)
                     content = res.choices[0].message.content or ""
@@ -251,12 +254,12 @@ class LLMHandler:
     ) -> Tuple[str, str]:
         """Direct zero-dependency Groq REST API caller."""
         models_to_try = [model_name] if model_name else [
-            "llama3-8b-8192",
-            "llama-3.1-8b-instant",
-            "llama3-70b-8192",
-            "mixtral-8x7b-32768",
+            "openai/gpt-oss-120b",
+            "openai/gpt-oss-20b",
+            "qwen/qwen3.8-27b",
+            "allam-2-7b",
             "llama-3.3-70b-versatile",
-            "gemma2-9b-it"
+            "llama-3.1-8b-instant"
         ]
         url = "https://api.groq.com/openai/v1/chat/completions"
 
@@ -265,7 +268,8 @@ class LLMHandler:
             payload = {
                 "model": model,
                 "messages": [{"role": "user", "content": prompt}],
-                "temperature": float(temperature)
+                "temperature": float(temperature),
+                "max_tokens": 800
             }
             req_data = json.dumps(payload).encode("utf-8")
             req = urllib.request.Request(

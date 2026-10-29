@@ -1,0 +1,5 @@
+Agentic AI and Large Language Models are revolutionizing modern computing.
+Autonomous agents can perceive environment context, formulate step-by-step plans,
+call external tools (calculators, APIs, and databases), and self-correct their outputs.
+Retrieval-Augmented Generation (RAG) pairs LLMs with vector search engines like FAISS
+to ground generations in authoritative facts without hallucinating.

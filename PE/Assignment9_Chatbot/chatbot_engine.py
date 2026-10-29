@@ -18,10 +18,12 @@ except ImportError:
     HAS_OPENAI = False
 
 
+DEFAULT_GROQ_KEY = os.environ.get("GROQ_API_KEY", "")
+
 class ChatbotEngine:
     def __init__(self, provider: str = "auto", api_key: Optional[str] = None):
         self.raw_provider = provider.lower()
-        raw_key = (api_key or os.environ.get("GROQ_API_KEY") or os.environ.get("GEMINI_API_KEY") or os.environ.get("OPENAI_API_KEY") or "").strip()
+        raw_key = (api_key or os.environ.get("GROQ_API_KEY") or DEFAULT_GROQ_KEY).strip()
         self.api_key = raw_key.strip('"').strip("'").strip()
 
         # Auto-detect provider
@@ -73,8 +75,21 @@ class ChatbotEngine:
                 try:
                     client = openai.OpenAI(base_url="https://api.groq.com/openai/v1", api_key=self.api_key)
                     models_data = client.models.list()
-                    available_ids = [m.id for m in models_data.data if "whisper" not in m.id and "guard" not in m.id]
-                    print(f"\n[GROQ DISCOVERY] Live available models on this key: {available_ids}\n")
+                    available_ids = [
+                        m.id for m in models_data.data 
+                        if "whisper" not in m.id and "guard" not in m.id and "canopylabs" not in m.id and "vision" not in m.id
+                    ]
+                    # Sort to prioritize top-tier general chat models
+                    priority_order = [
+                        "openai/gpt-oss-120b", 
+                        "openai/gpt-oss-20b", 
+                        "llama-3.1-8b-instant", 
+                        "llama-3.3-70b-versatile", 
+                        "qwen/qwen3.8-27b",
+                        "allam-2-7b"
+                    ]
+                    available_ids.sort(key=lambda mid: priority_order.index(mid) if mid in priority_order else 99)
+                    print(f"\n[GROQ DISCOVERY] Prioritized chat models: {available_ids}\n")
 
                     last_sdk_err = None
                     for m in available_ids:
@@ -83,7 +98,8 @@ class ChatbotEngine:
                             res = client.chat.completions.create(
                                 model=m,
                                 messages=messages,
-                                temperature=float(temperature)
+                                temperature=float(temperature),
+                                max_tokens=800
                             )
                             elapsed = round(time.time() - start_time, 3)
                             return res.choices[0].message.content or "", {
